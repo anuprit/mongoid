@@ -76,11 +76,28 @@ module Mongoid
     #
     # @since 1.0.0
     def save(options = {})
+      # Raising exception if validation fails. Ideally this should return false and not raise exception
+      # But according to our requirements I have to do this.
+      self.class.fail_validate!(self) unless input_types_check
+
       if new_record?
         !insert(options).new_record?
       else
         update(options)
       end
+    end
+
+    # Custom check required for arrays and hashes as we did not want to add the checks on all the models.
+    # As soon as an error is found it returns as we did not want to validate all the fields.
+    def input_types_check
+      errors.clear
+      attributes.each do |key, val|
+        if fields[key] and ['Arrray', 'Hash'].include?("#{fields[key].type}") and  !val.is_a?(fields[key].type)
+          errors["#{key}"] << "is not a #{fields[key].type}"
+          return false
+        end
+      end
+      return true
     end
 
     # Save the document - will perform an insert if the document is new, and
